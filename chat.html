@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        html, body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #login {
+            width: 300px;
+            height: 300px;
+            background-color: pink;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            align-items: center;
+            padding: 0;
+        }
+
+        #login li {
+            list-style: none;
+            font-size: 15px;
+            line-height: 20px;
+            padding: 3px 0;
+        }
+
+        #login li span {
+            margin-bottom: 50px;
+        }
+
+        #login textarea {
+            height: 20px;
+            line-height: 20px;
+            float: right;
+        }
+
+        #login #id-container {
+            margin: 60px 0 30px 0;
+            float: right;
+            width: 70%;
+        }
+
+        #login #password-contaienr {
+            margin: 30px 0;
+            width: 70%;
+        }
+
+        #login #btn-login {
+            margin: 10px 0;
+            width: 60px;
+            text-align: center;
+        }
+
+        #login #btn-login #startLogin {
+            display: inline-block;
+            width: 50px;
+        }
+
+        #chatting {
+            display: none;
+            height: 80%;
+            width: 30%;
+            background-color: lightgreen;
+            position: relative;
+        }
+
+        #chatting #user-login {
+            width: 80%;
+            margin: 0 auto;
+            height: 30px;
+        }
+
+        #chatting #content {
+            overflow: scroll;
+            width: 80%;
+            margin: 0 auto;
+            height: 80%;
+            background-color: lavenderblush;
+            position: absolute;
+            top: 31px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #chatting #content li {
+            border-bottom: 1px solid #ccc;
+            padding: 3px 10px;
+        }
+
+        #chatting-bottom {
+            background-color: pink;
+            width: 100%;
+            margin: 0 auto;
+            position: absolute;
+            bottom: 10px;
+            display: flex;
+        }
+
+        #write {
+            width: 100px;
+            height: 30px;
+            resize: none;
+            flex: 1;
+            line-height: 30px;
+            font-size: 25px;
+            color: #666;
+        }
+
+        #send {
+            color: #666;
+            background-color: lightblue;
+            width: 50px;
+            height: 30px;
+            position: absolute;
+            right: 0;
+        }
+
+    </style>
+    <script>
+        window.onload = function () {
+            let send = document.getElementById('send');
+            let write = document.getElementById('write');
+            let id = document.getElementById('id');
+            let password = document.getElementById('password');
+            let startLogin = document.getElementById('startLogin');
+            let login = document.getElementById('login');
+            let chatting = document.getElementById('chatting');
+            let content = document.getElementById('content');
+            let userLogin = document.getElementById('user-login');
+            //用户的id
+            let userId = '';
+            //是否登录的标志
+            let ifLogin = false;
+            //导入客户端ws模块
+            var socket = io();
+
+            //点击登录按钮
+            startLogin.addEventListener('click', () => {
+                // console.log(id.value)
+                // console.log(password.value)
+                let loginInfo = {
+                    id: id.value,
+                    password: password.value
+                };
+                userId = id.value;
+                socket.emit('login', loginInfo);
+                id.value = '';
+                password.value = '';
+            });
+            //接受登录成功的命令
+            socket.on('loginRes', () => {
+                content.innerHTML = '';
+                login.style.display = 'none';
+                chatting.style.display = 'inherit';
+                ifLogin = true;
+            });
+            //成员进入聊天室
+            socket.on('loginIn', (msg) => {
+                if (ifLogin) {
+                    let li = document.createElement('li');
+                    li.innerHTML = msg + '进入聊天室';
+                    li.style.color = 'red';
+                    li.style.fontSize = '10px';
+                    content.appendChild(li);
+                }
+            });
+            //绑定发送按钮事件
+            send.addEventListener('click', () => {
+                let writeVal = {
+                    id: userId,
+                    val: write.value
+                };
+                socket.emit('sendMsg', writeVal);
+                write.value = '';
+            });
+            //渲染聊天记录
+            socket.on('sendMsg', (msg) => {
+                let msg1 = msg.id + ': ' + msg.val;
+                let li = document.createElement('li');
+                li.innerHTML = msg1;
+                li.style.color = '#333';
+                content.appendChild(li);
+            });
+            //有用户离开
+            socket.on('leave', (msg) => {
+                let li = document.createElement('li');
+                li.innerHTML = msg + '离开聊天室';
+                li.style.color = 'red';
+                li.style.fontSize = '10px';
+                content.appendChild(li);
+            });
+            //刷新在线用户
+            socket.on('refresh', (msg) => {
+                userLogin.innerHTML = '';
+                msg.forEach((item) => {
+                    userLogin.innerHTML = userLogin.innerHTML + item + ' ';
+                });
+                userLogin.innerHTML = userLogin.innerHTML + '在线';
+            })
+        }
+    </script>
+</head>
+<body>
+<ul id="login">
+    <li id="id-container"><span>用户名：</span><textarea id="id"></textarea></li>
+    <li id="password-contaienr"><span>密码：</span><textarea id="password"></textarea></li>
+    <li id="btn-login">
+        <button id="startLogin">登录</button>
+    </li>
+</ul>
+<div id="chatting">
+    <p id="user-login"></p>
+    <ul id="content">
+    </ul>
+    <div id="chatting-bottom">
+        <textarea id="write"></textarea>
+        <button id="send">发送</button>
+    </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+</body>
+</html>
